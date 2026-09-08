@@ -10,6 +10,7 @@
     "create-admin": "node scripts/create-admin.mjs"
   },
   "dependencies": {
+    "@libsql/client": "^0.18.0",
     "bcryptjs": "^3.0.3",
     "better-sqlite3": "^13.0.3",
     "jose": "^6.2.12",
