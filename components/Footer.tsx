@@ -26,8 +26,8 @@ export default function Footer() {
           <h3 className="text-sm font-medium mb-4">Get in touch</h3>
           <ul className="space-y-2.5 text-sm text-[var(--text-muted)]">
             <li>
-              <a href="mailto:hello@fayms.sa" className="hover:text-[var(--text)] transition-colors">
-                hello@fayms.sa
+              <a href="mailto:fayms026@gmail.com" className="hover:text-[var(--text)] transition-colors">
+                fayms026@gmail.com
               </a>
             </li>
             <li>
@@ -36,8 +36,8 @@ export default function Footer() {
               </a>
             </li>
             <li>
-              <a href="https://instagram.com/fayms" className="hover:text-[var(--text)] transition-colors">
-                @fayms
+              <a href="https://instagram.com/fayms.sa" className="hover:text-[var(--text)] transition-colors">
+                @fayms.sa
               </a>
             </li>
           </ul>
