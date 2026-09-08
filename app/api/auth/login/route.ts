@@ -18,9 +18,10 @@ export async function POST(req: NextRequest) {
 
   const { username, password } = parsed.data;
 
-  const admin = db
+  // تم إضافة await هنا لتعمل بشكل صحيح مع قاعدة بيانات Turso
+  const admin = (await db
     .prepare("SELECT * FROM admins WHERE username = ?")
-    .get(username) as Admin | undefined;
+    .get(username)) as Admin | undefined;
 
   // Always run a hash comparison to avoid leaking account existence via timing.
   const validHash =
