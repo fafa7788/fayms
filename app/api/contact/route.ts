@@ -1,32 +1,33 @@
-import { NextRequest, NextResponse } from "next/server";
-import db from "@/lib/db";
-import { z } from "zod";
+import { NextResponse } from "next/server";
 
-const schema = z.object({
-  name: z.string().trim().min(1).max(200),
-  email: z.string().trim().email().max(200),
-  phone: z.string().trim().max(50).optional().nullable(),
-  project_type: z.string().trim().max(100).optional().nullable(),
-  message: z.string().trim().min(1).max(5000),
-});
+export async function POST(req: Request) {
+  try {
+    const body = await req.json();
+    const { name, email, projectType, message } = body;
 
-export async function POST(req: NextRequest) {
-  const body = await req.json().catch(() => null);
-  const parsed = schema.safeParse(body);
+    const response = await fetch("https://api.web3forms.com/submit", {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        Accept: "application/json",
+      },
+      body: JSON.stringify({
+        access_key: "0d0d8e15-7348-4051-bd39-37015f9aa3e2",
+        name: name,
+        email: email,
+        subject: `New Project Request - FAYMS: ${projectType || "General"}`,
+        message: `Name: ${name}\nEmail: ${email}\nProject Type: ${projectType}\n\nMessage:\n${message}`,
+      }),
+    });
 
-  if (!parsed.success) {
-    return NextResponse.json(
-      { error: "Please fill in all required fields with valid values." },
-      { status: 400 }
-    );
+    const result = await response.json();
+
+    if (result.success) {
+      return NextResponse.json({ success: true });
+    } else {
+      return NextResponse.json({ error: "Failed to send message" }, { status: 500 });
+    }
+  } catch (error) {
+    return NextResponse.json({ error: "Server error" }, { status: 500 });
   }
-
-  const { name, email, phone, project_type, message } = parsed.data;
-
-  db.prepare(
-    `INSERT INTO messages (name, email, phone, project_type, message)
-     VALUES (?, ?, ?, ?, ?)`
-  ).run(name, email, phone ?? null, project_type ?? null, message);
-
-  return NextResponse.json({ ok: true });
 }
