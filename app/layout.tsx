@@ -5,6 +5,9 @@ const siteUrl = process.env.NEXT_PUBLIC_SITE_URL || "https://fayms.example.com";
 
 export const metadata: Metadata = {
   metadataBase: new URL(siteUrl),
+  verification: {
+google: "9FYpQ460DPuM3ccVpY5o9YXCejjVZf-_NPn2HGwufxw",
+},
   title: {
     default: "FAYMS — Digital Solutions for Modern Businesses",
     template: "%s — FAYMS",
