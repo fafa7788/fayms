@@ -15,6 +15,17 @@ type Message = {
   created_at: string;
 };
 
+// استخراج أول صورة من المصفوفة أو الرابط القديم
+function getFirstImage(val?: string | null): string {
+  if (!val) return "";
+  try {
+    const parsed = JSON.parse(val);
+    return Array.isArray(parsed) && parsed.length > 0 ? parsed[0] : val;
+  } catch {
+    return val;
+  }
+}
+
 export default function DashboardPage() {
   const [tab, setTab] = useState<"projects" | "messages">("projects");
   const [projects, setProjects] = useState<Project[] | null>(null);
@@ -95,47 +106,54 @@ export default function DashboardPage() {
           )}
           {projects && projects.length > 0 && (
             <div className="border border-[var(--border)] divide-y divide-[var(--border)]">
-              {projects.map((p) => (
-                <div key={p.id} className="flex items-center gap-4 p-4">
-                  <div className="w-16 h-16 bg-[var(--bg-elevated)] shrink-0 overflow-hidden">
-                    {p.image_url && (
-                      // eslint-disable-next-line @next/next/no-img-element
-                      <img src={p.image_url} alt="" className="w-full h-full object-cover" />
-                    )}
+              {projects.map((p) => {
+                const thumb = getFirstImage(p.image_url);
+                return (
+                  <div key={p.id} className="flex items-center gap-4 p-4">
+                    <div className="w-16 h-16 bg-[var(--bg-elevated)] shrink-0 overflow-hidden">
+                      {thumb ? (
+                        // eslint-disable-next-line @next/next/no-img-element
+                        <img src={thumb} alt="" className="w-full h-full object-cover" />
+                      ) : (
+                        <div className="w-full h-full flex items-center justify-center text-[10px] text-[var(--text-dim)]">
+                          No img
+                        </div>
+                      )}
+                    </div>
+                    <div className="flex-1 min-w-0">
+                      <p className="font-medium truncate">{p.name}</p>
+                      <p className="text-xs text-[var(--text-muted)] truncate">{p.category}</p>
+                    </div>
+                    <span
+                      className={`text-xs px-2 py-1 shrink-0 ${
+                        p.published ? "text-[var(--accent)] border border-[var(--accent)]/40" : "text-[var(--text-dim)] border border-[var(--border)]"
+                      }`}
+                    >
+                      {p.published ? "Published" : "Unpublished"}
+                    </span>
+                    <button
+                      disabled={busyId === p.id}
+                      onClick={() => togglePublish(p)}
+                      className="text-sm text-[var(--text-muted)] hover:text-[var(--text)] transition-colors disabled:opacity-50 shrink-0"
+                    >
+                      {p.published ? "Unpublish" : "Publish"}
+                    </button>
+                    <Link
+                      href={`/admin/projects/${p.id}`}
+                      className="text-sm text-[var(--text-muted)] hover:text-[var(--text)] transition-colors shrink-0"
+                    >
+                      Edit
+                    </Link>
+                    <button
+                      disabled={busyId === p.id}
+                      onClick={() => deleteProject(p)}
+                      className="text-sm text-red-400 hover:text-red-300 transition-colors disabled:opacity-50 shrink-0"
+                    >
+                      Delete
+                    </button>
                   </div>
-                  <div className="flex-1 min-w-0">
-                    <p className="font-medium truncate">{p.name}</p>
-                    <p className="text-xs text-[var(--text-muted)] truncate">{p.category}</p>
-                  </div>
-                  <span
-                    className={`text-xs px-2 py-1 shrink-0 ${
-                      p.published ? "text-[var(--accent)] border border-[var(--accent)]/40" : "text-[var(--text-dim)] border border-[var(--border)]"
-                    }`}
-                  >
-                    {p.published ? "Published" : "Unpublished"}
-                  </span>
-                  <button
-                    disabled={busyId === p.id}
-                    onClick={() => togglePublish(p)}
-                    className="text-sm text-[var(--text-muted)] hover:text-[var(--text)] transition-colors disabled:opacity-50 shrink-0"
-                  >
-                    {p.published ? "Unpublish" : "Publish"}
-                  </button>
-                  <Link
-                    href={`/admin/projects/${p.id}`}
-                    className="text-sm text-[var(--text-muted)] hover:text-[var(--text)] transition-colors shrink-0"
-                  >
-                    Edit
-                  </Link>
-                  <button
-                    disabled={busyId === p.id}
-                    onClick={() => deleteProject(p)}
-                    className="text-sm text-red-400 hover:text-red-300 transition-colors disabled:opacity-50 shrink-0"
-                  >
-                    Delete
-                  </button>
-                </div>
-              ))}
+                );
+              })}
             </div>
           )}
         </>
