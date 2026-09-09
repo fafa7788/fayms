@@ -1,7 +1,6 @@
 import { NextResponse } from "next/server";
 import database from "@/lib/db";
 
-// للتأكد من التوافق سواء كان export default أو export { db }
 const db = (database as any)?.db || database;
 
 export async function POST(req: Request) {
@@ -22,12 +21,12 @@ export async function POST(req: Request) {
           "INSERT INTO messages (name, email, phone, project_type, message) VALUES (?, ?, ?, ?, ?)"
         )
         .run(senderName, senderEmail, senderPhone, senderProjectType, senderMessage);
-      console.log("Message inserted successfully into Turso");
+      console.log("Message saved to Turso");
     } catch (dbErr) {
       console.error("Database insert error:", dbErr);
     }
 
-    // 2. إرسال عبر Web3Forms
+    // 2. إرسال عبر Web3Forms بالمفتاح الجديد
     try {
       const mailRes = await fetch("https://api.web3forms.com/submit", {
         method: "POST",
@@ -36,7 +35,7 @@ export async function POST(req: Request) {
           Accept: "application/json",
         },
         body: JSON.stringify({
-          access_key: "0d0d8e15-7348-4051-bd39-37015f9aa3e2",
+          access_key: "8f59d2ec-1d15-474b-9c8e-9c6e450e7647",
           name: senderName,
           email: senderEmail,
           subject: `New Request from FAYMS: ${senderProjectType}`,
