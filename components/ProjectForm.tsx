@@ -16,6 +16,42 @@ function parseInitialImages(val?: string | null): string[] {
   }
 }
 
+// ضغط الصورة سريعاً إلى حجم مناسب للويب
+function compressImage(file: File, maxWidth = 800, quality = 0.7): Promise<string> {
+  return new Promise((resolve, reject) => {
+    const reader = new FileReader();
+    reader.readAsDataURL(file);
+    reader.onload = (event) => {
+      const img = new Image();
+      img.src = event.target?.result as string;
+      img.onload = () => {
+        const elem = document.createElement("canvas");
+        let width = img.width;
+        let height = img.height;
+
+        if (width > maxWidth) {
+          height = Math.round((height * maxWidth) / width);
+          width = maxWidth;
+        }
+
+        elem.width = width;
+        elem.height = height;
+
+        const ctx = elem.getContext("2d");
+        if (!ctx) {
+          resolve(event.target?.result as string);
+          return;
+        }
+        ctx.drawImage(img, 0, 0, width, height);
+        const compressedBase64 = elem.toDataURL("image/webp", quality);
+        resolve(compressedBase64);
+      };
+      img.onerror = (err) => reject(err);
+    };
+    reader.onerror = (err) => reject(err);
+  });
+}
+
 export default function ProjectForm({ project }: { project?: Project }) {
   const router = useRouter();
   const isEdit = Boolean(project);
@@ -29,28 +65,37 @@ export default function ProjectForm({ project }: { project?: Project }) {
     const files = e.target.files;
     if (!files || files.length === 0) return;
 
-    setUploading(true);
     setError("");
+    const selectedFiles = Array.from(files);
+
+    // 1. إظهار المعاينة فورياً بمجرد اختيار الملف
+    const instantPreviews = selectedFiles.map((file) => URL.createObjectURL(file));
+    setImages((prev) => [...prev, ...instantPreviews]);
+
+    e.target.value = "";
+    setUploading(true);
 
     try {
-      const uploadedUrls: string[] = [];
-      for (const file of Array.from(files)) {
-        const formData = new FormData();
-        formData.append("file", file);
-        const res = await fetch("/api/admin/upload", { method: "POST", body: formData });
-        if (!res.ok) {
-          const body = await res.json().catch(() => ({}));
-          throw new Error(body.error || `Upload failed for ${file.name}`);
-        }
-        const body = await res.json();
-        uploadedUrls.push(body.url);
-      }
-      setImages((prev) => [...prev, ...uploadedUrls]);
+      // 2. ضغط الصور في الخلفية
+      const compressedUrls = await Promise.all(
+        selectedFiles.map((file) => {
+          if (!file.type.startsWith("image/")) {
+            throw new Error(`File ${file.name} is not an image.`);
+          }
+          return compressImage(file, 800, 0.7);
+        })
+      );
+
+      // 3. استبدال روابط المعاينة بنصوص Base64 الجاهزة للحفظ
+      setImages((prev) => {
+        const withoutPreviews = prev.slice(0, prev.length - instantPreviews.length);
+        return [...withoutPreviews, ...compressedUrls];
+      });
     } catch (err) {
-      setError(err instanceof Error ? err.message : "Upload failed.");
+      setError(err instanceof Error ? err.message : "Error processing image.");
+      setImages((prev) => prev.slice(0, prev.length - instantPreviews.length));
     } finally {
       setUploading(false);
-      e.target.value = "";
     }
   }
 
@@ -189,7 +234,7 @@ export default function ProjectForm({ project }: { project?: Project }) {
           />
         </label>
 
-        {uploading && <p className="text-xs text-[var(--text-dim)] mt-2">Uploading image…</p>}
+        {uploading && <p className="text-xs text-[var(--text-dim)] mt-2">Optimizing image...</p>}
       </div>
 
       {error && <p className="text-sm text-red-400">{error}</p>}
