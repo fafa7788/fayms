@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import type { Project } from "@/lib/db";
 
 function parseImages(val?: string | null): string[] {
@@ -18,6 +18,11 @@ export default function ProjectCard({ project }: { project: Project }) {
   const [currentIndex, setCurrentIndex] = useState(0);
   const [isOpen, setIsOpen] = useState(false);
 
+  // مرجع لحساب السحب باللمس
+  const touchStartX = useRef<number | null>(null);
+  const touchEndX = useRef<number | null>(null);
+  const isSwiping = useRef(false);
+
   function prevImage(e?: React.MouseEvent) {
     if (e) {
       e.preventDefault();
@@ -34,7 +39,43 @@ export default function ProjectCard({ project }: { project: Project }) {
     setCurrentIndex((prev) => (prev === images.length - 1 ? 0 : prev + 1));
   }
 
-  // دعم التنقل والإغلاق بأزرار الكيبورد عند تكبير الصورة
+  // أحداث اللمس للسحب بالجوال (Swipe)
+  function handleTouchStart(e: React.TouchEvent) {
+    touchStartX.current = e.targetTouches[0].clientX;
+    touchEndX.current = null;
+    isSwiping.current = false;
+  }
+
+  function handleTouchMove(e: React.TouchEvent) {
+    touchEndX.current = e.targetTouches[0].clientX;
+    if (touchStartX.current !== null && Math.abs(touchStartX.current - touchEndX.current) > 10) {
+      isSwiping.current = true;
+    }
+  }
+
+  function handleTouchEnd() {
+    if (!touchStartX.current || !touchEndX.current || images.length <= 1) return;
+    const distance = touchStartX.current - touchEndX.current;
+    const minSwipeDistance = 45; // مسافة السحب المحتسبة بالبكسل
+
+    if (distance > minSwipeDistance) {
+      nextImage(); // سحب لليسار -> الصورة التالية
+    } else if (distance < -minSwipeDistance) {
+      prevImage(); // سحب لليمين -> الصورة السابقة
+    }
+
+    touchStartX.current = null;
+    touchEndX.current = null;
+  }
+
+  function handleCardClick() {
+    // فتح الصورة فقط إذا لم تكن حركة سحب بإصبع الجوال
+    if (!isSwiping.current && images.length > 0) {
+      setIsOpen(true);
+    }
+  }
+
+  // دعم أزرار الكيبورد
   useEffect(() => {
     function handleKeyDown(e: KeyboardEvent) {
       if (!isOpen) return;
@@ -49,10 +90,13 @@ export default function ProjectCard({ project }: { project: Project }) {
   return (
     <>
       <div className="group border border-[var(--border)] hover:border-[var(--border-strong)] transition-colors flex flex-col">
-        {/* صندوق الصورة في الكرت */}
+        {/* حاوية الصورة مع دعم اللمس والسحب */}
         <div
-          onClick={() => images.length > 0 && setIsOpen(true)}
-          className={`relative aspect-[4/3] bg-[var(--bg-elevated)] overflow-hidden ${
+          onClick={handleCardClick}
+          onTouchStart={handleTouchStart}
+          onTouchMove={handleTouchMove}
+          onTouchEnd={handleTouchEnd}
+          className={`relative aspect-[4/3] bg-[var(--bg-elevated)] overflow-hidden touch-pan-y ${
             images.length > 0 ? "cursor-zoom-in" : ""
           }`}
           title={images.length > 0 ? "اضغط للتكبير" : ""}
@@ -61,16 +105,17 @@ export default function ProjectCard({ project }: { project: Project }) {
             <>
               {/* eslint-disable-next-line @next/next/no-img-element */}
               <img
+                key={images[currentIndex]}
                 src={images[currentIndex]}
                 alt={project.name}
                 decoding="async"
-                className="w-full h-full object-cover group-hover:scale-[1.03] transition-transform duration-500"
+                className="w-full h-full object-cover group-hover:scale-[1.03] transition-transform duration-500 pointer-events-none select-none"
               />
 
               {images.length > 1 && (
                 <>
-                  {/* أزرار الأسهم المصغرة على الكرت */}
-                  <div className="absolute inset-0 flex items-center justify-between p-2 opacity-0 group-hover:opacity-100 transition-opacity">
+                  {/* أزرار الأسهم للشاشات الكبيرة */}
+                  <div className="hidden sm:flex absolute inset-0 items-center justify-between p-2 opacity-0 group-hover:opacity-100 transition-opacity">
                     <button
                       type="button"
                       onClick={prevImage}
@@ -89,7 +134,7 @@ export default function ProjectCard({ project }: { project: Project }) {
                     </button>
                   </div>
 
-                  {/* نقاط الترقيم */}
+                  {/* مؤشرات الترقيم */}
                   <div className="absolute bottom-2 left-0 right-0 flex justify-center gap-1.5 pointer-events-none">
                     {images.map((_, idx) => (
                       <span
@@ -134,13 +179,12 @@ export default function ProjectCard({ project }: { project: Project }) {
         </div>
       </div>
 
-      {/* نافذة التكبير ملء الشاشة (Lightbox Modal) */}
+      {/* نافذة التكبير ملء الشاشة تدعم السحب أيضاً */}
       {isOpen && (
         <div
           onClick={() => setIsOpen(false)}
           className="fixed inset-0 z-50 bg-black/90 backdrop-blur-sm flex items-center justify-center p-4 sm:p-8 select-none"
         >
-          {/* زر الإغلاق */}
           <button
             type="button"
             onClick={() => setIsOpen(false)}
@@ -150,25 +194,27 @@ export default function ProjectCard({ project }: { project: Project }) {
             ×
           </button>
 
-          {/* حاوية الصورة المكبرة */}
           <div
             onClick={(e) => e.stopPropagation()}
-            className="relative max-w-5xl max-h-[85vh] flex items-center justify-center"
+            onTouchStart={handleTouchStart}
+            onTouchMove={handleTouchMove}
+            onTouchEnd={handleTouchEnd}
+            className="relative max-w-5xl max-h-[85vh] flex items-center justify-center touch-pan-y"
           >
             {/* eslint-disable-next-line @next/next/no-img-element */}
             <img
+              key={images[currentIndex]}
               src={images[currentIndex]}
               alt={project.name}
-              className="max-w-full max-h-[85vh] object-contain rounded-sm shadow-2xl"
+              className="max-w-full max-h-[85vh] object-contain rounded-sm shadow-2xl pointer-events-none select-none"
             />
 
-            {/* أزرار التقليب والشاشة كبيرة */}
             {images.length > 1 && (
               <>
                 <button
                   type="button"
                   onClick={prevImage}
-                  className="absolute left-[-20px] sm:left-[-50px] w-10 h-10 flex items-center justify-center bg-white/10 hover:bg-white/25 text-white text-2xl rounded-full transition-colors"
+                  className="hidden sm:flex absolute left-[-20px] sm:left-[-50px] w-10 h-10 items-center justify-center bg-white/10 hover:bg-white/25 text-white text-2xl rounded-full transition-colors"
                   title="السابق"
                 >
                   ‹
@@ -176,13 +222,12 @@ export default function ProjectCard({ project }: { project: Project }) {
                 <button
                   type="button"
                   onClick={nextImage}
-                  className="absolute right-[-20px] sm:right-[-50px] w-10 h-10 flex items-center justify-center bg-white/10 hover:bg-white/25 text-white text-2xl rounded-full transition-colors"
+                  className="hidden sm:flex absolute right-[-20px] sm:right-[-50px] w-10 h-10 items-center justify-center bg-white/10 hover:bg-white/25 text-white text-2xl rounded-full transition-colors"
                   title="التالي"
                 >
                   ›
                 </button>
 
-                {/* مؤشر ترقيم الصور في الأسفل مثل: 1 / 3 */}
                 <div className="absolute -bottom-8 left-0 right-0 text-center text-xs text-white/70 font-mono">
                   {currentIndex + 1} / {images.length}
                 </div>
