@@ -1,5 +1,8 @@
 import { NextResponse } from "next/server";
-import { db } from "@/lib/db";
+import database from "@/lib/db";
+
+// للتأكد من التوافق سواء كان export default أو export { db }
+const db = (database as any)?.db || database;
 
 export async function POST(req: Request) {
   try {
@@ -12,18 +15,21 @@ export async function POST(req: Request) {
     const senderProjectType = projectType || "General";
     const senderMessage = message || "";
 
-    // حفظ الرسالة في Turso
+    // 1. حفظ الرسالة في Turso
     try {
-      await db.prepare(
-        "INSERT INTO messages (name, email, phone, project_type, message) VALUES (?, ?, ?, ?, ?)"
-      ).run(senderName, senderEmail, senderPhone, senderProjectType, senderMessage);
+      await db
+        .prepare(
+          "INSERT INTO messages (name, email, phone, project_type, message) VALUES (?, ?, ?, ?, ?)"
+        )
+        .run(senderName, senderEmail, senderPhone, senderProjectType, senderMessage);
+      console.log("Message inserted successfully into Turso");
     } catch (dbErr) {
       console.error("Database insert error:", dbErr);
     }
 
-    // إرسال عبر Web3Forms
+    // 2. إرسال عبر Web3Forms
     try {
-      await fetch("https://api.web3forms.com/submit", {
+      const mailRes = await fetch("https://api.web3forms.com/submit", {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
@@ -37,6 +43,9 @@ export async function POST(req: Request) {
           message: `Name: ${senderName}\nEmail: ${senderEmail}\nPhone: ${senderPhone}\nProject Type: ${senderProjectType}\n\nMessage:\n${senderMessage}`,
         }),
       });
+
+      const mailData = await mailRes.json();
+      console.log("Web3Forms Response:", mailData);
     } catch (mailErr) {
       console.error("Web3Forms error:", mailErr);
     }
