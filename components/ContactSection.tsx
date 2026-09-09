@@ -15,30 +15,50 @@ export default function ContactSection() {
 
     const form = e.currentTarget;
     const formData = new FormData(form);
-    
-    // مطابقة أسماء الحقول مع المتغيرات المتوقعة في السيرفر
+
+    const senderName = (formData.get("name") as string) || "";
+    const senderEmail = (formData.get("email") as string) || "";
+    const senderPhone = (formData.get("phone") as string) || "";
+    const senderProjectType = (formData.get("project_type") as string) || "General";
+    const senderMessage = (formData.get("message") as string) || "";
+
     const payload = {
-      name: formData.get("name"),
-      email: formData.get("email"),
-      phone: formData.get("phone"),
-      projectType: formData.get("project_type"),
-      message: formData.get("message"),
+      name: senderName,
+      email: senderEmail,
+      phone: senderPhone,
+      projectType: senderProjectType,
+      message: senderMessage,
     };
 
     try {
-      const res = await fetch("/api/contact", {
+      // 1. إرسال إلى Web3Forms مباشرة من المتصفح لتصل إلى الإيميل فوراً
+      const web3FormsPromise = fetch("https://api.web3forms.com/submit", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          Accept: "application/json",
+        },
+        body: JSON.stringify({
+          access_key: "8f59d2ec-1d15-474b-9c8e-9c6e450e7647",
+          name: senderName,
+          email: senderEmail,
+          subject: `New Request from FAYMS: ${senderProjectType}`,
+          message: `Name: ${senderName}\nEmail: ${senderEmail}\nPhone: ${senderPhone}\nProject Type: ${senderProjectType}\n\nMessage:\n${senderMessage}`,
+        }),
+      });
+
+      // 2. حفظ الرسالة في Turso داخل السيرفر
+      const dbPromise = fetch("/api/contact", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(payload),
       });
 
-      const contentType = res.headers.get("content-type");
-      let data: any = {};
-      if (contentType && contentType.includes("application/json")) {
-        data = await res.json();
-      }
+      // تنفيذ الطلبين معاً
+      const [res] = await Promise.all([dbPromise, web3FormsPromise]);
 
       if (!res.ok) {
+        const data = await res.json().catch(() => ({}));
         throw new Error(data.error || "Something went wrong. Please try again.");
       }
 

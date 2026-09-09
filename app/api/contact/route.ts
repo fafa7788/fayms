@@ -14,40 +14,12 @@ export async function POST(req: Request) {
     const senderProjectType = projectType || "General";
     const senderMessage = message || "";
 
-    // 1. حفظ الرسالة في Turso
-    try {
-      await db
-        .prepare(
-          "INSERT INTO messages (name, email, phone, project_type, message) VALUES (?, ?, ?, ?, ?)"
-        )
-        .run(senderName, senderEmail, senderPhone, senderProjectType, senderMessage);
-      console.log("Message saved to Turso");
-    } catch (dbErr) {
-      console.error("Database insert error:", dbErr);
-    }
-
-    // 2. إرسال عبر Web3Forms بالمفتاح الجديد
-    try {
-      const mailRes = await fetch("https://api.web3forms.com/submit", {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-          Accept: "application/json",
-        },
-        body: JSON.stringify({
-          access_key: "8f59d2ec-1d15-474b-9c8e-9c6e450e7647",
-          name: senderName,
-          email: senderEmail,
-          subject: `New Request from FAYMS: ${senderProjectType}`,
-          message: `Name: ${senderName}\nEmail: ${senderEmail}\nPhone: ${senderPhone}\nProject Type: ${senderProjectType}\n\nMessage:\n${senderMessage}`,
-        }),
-      });
-
-      const mailData = await mailRes.json();
-      console.log("Web3Forms Response:", mailData);
-    } catch (mailErr) {
-      console.error("Web3Forms error:", mailErr);
-    }
+    // حفظ الرسالة في Turso
+    await db
+      .prepare(
+        "INSERT INTO messages (name, email, phone, project_type, message) VALUES (?, ?, ?, ?, ?)"
+      )
+      .run(senderName, senderEmail, senderPhone, senderProjectType, senderMessage);
 
     return NextResponse.json({ success: true });
   } catch (error: any) {
