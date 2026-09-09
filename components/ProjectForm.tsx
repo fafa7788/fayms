@@ -179,14 +179,17 @@ export default function ProjectForm({ project }: { project?: Project }) {
           </div>
         )}
 
-        <input
-          type="file"
-          multiple
-          accept="image/png,image/jpeg,image/webp,image/gif"
-          onChange={handleFileChange}
-          className="text-sm text-[var(--text-muted)]"
-        />
-        {uploading && <p className="text-xs text-[var(--text-dim)] mt-2">Uploading images…</p>}
+        <label className="inline-flex items-center gap-2 px-4 py-2 bg-[var(--bg-elevated)] border border-[var(--border)] hover:border-[var(--text-muted)] text-sm cursor-pointer transition-colors">
+          <span>+ Add image</span>
+          <input
+            type="file"
+            accept="image/png,image/jpeg,image/webp,image/gif"
+            onChange={handleFileChange}
+            className="hidden"
+          />
+        </label>
+
+        {uploading && <p className="text-xs text-[var(--text-dim)] mt-2">Uploading image…</p>}
       </div>
 
       {error && <p className="text-sm text-red-400">{error}</p>}
